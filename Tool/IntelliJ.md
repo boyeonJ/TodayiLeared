@@ -1,4 +1,4 @@
-##Compile and build applications with IntelliJ IDEA
+## Compile and build applications with IntelliJ IDEA
 
 The IntelliJ IDEA compilation and building process compiles source files and brings together external libraries, properties files, and configurations to produce a living application. IntelliJ IDEA uses a compiler that works according to the Java specification.
 
@@ -18,7 +18,7 @@ IntelliJ IDEA 컴파일 및 빌드 프로세스는 소스 파일을 컴파일하
 
 ---
 
-##Change the compilation output locations
+## Change the compilation output locations
 When you compile your source code, IntelliJ IDEA automatically creates an output directory that contains compiled .class files.
 Inside the output directory, IntelliJ IDEA also creates subdirectories for each of your modules.
 
@@ -51,7 +51,7 @@ At the module level, you can specify any desirable compilation output location f
 
 ---
 
-##Build
+## Build
 When you execute the Build the Build Project icon command, IntelliJ IDEA compiles all the classes inside your build target and places them inside the output directory.
 
 When you change any class inside the build target and then execute the build action, IntelliJ IDEA performs the incremental build that compiles only the changed classes. IntelliJ IDEA also recursively builds the classes' dependencies.
