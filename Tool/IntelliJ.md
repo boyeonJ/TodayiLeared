@@ -58,3 +58,5 @@ When you execute the Build the Build Project icon command, IntelliJ IDEA compile
 When you change any class inside the build target and then execute the build action, IntelliJ IDEA performs the incremental build that compiles only the changed classes. IntelliJ IDEA also recursively builds the classes' dependencies.
 
 https://www.jetbrains.com/help/idea/compiling-applications.html
+
+merge Test
