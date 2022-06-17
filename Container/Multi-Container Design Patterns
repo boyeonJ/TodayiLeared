@@ -1,0 +1,131 @@
+## #Multi-Container Design Patterns
+
+---
+
+쿠버네티스에서는 하나의 파드 안에 여러 컨테이너들을 함께 운영해야 할 수 있다. 이때 추가된 컨테이너들은 메인 컨테이너의 기능을 향상하거나 안정성 확보, 의존성 이슈 등등 보조적인 역할을 하며 운영하게 된다.
+
+쿠버네티스는 전체 서비스를 기능 단위로 분산하고 파드를 최소의 배포 단위로 나누고자 하는 설계 사상을 가지고 있다. 따라서 메인 프로세스를 네트워크 또는 스토리지의 밀접한 공유가 필요한 다른 컨테이너와 함께 운영하고자 할 때 멀티 컨테이너 파드를 사용해야 한다.
+
+지금부터 Multi-Container를 구성할 때 고려해야 하는 대표적인 Design Patterns 3가지를 살펴보려고 한다.
+
+### #Sidecar 패턴
+
+---
+
+- 원래 사용하려고 했던 기본 컨테이너의 **기능을 확장하거나 강화** 하려는 용도로 사용
+- 기본 컨테이너는 원래의 목적에 충실, 사이드카 컨테이너는 파일 시스템을 공유하는 보조 컨테이너로서 부가적인 기능을 담당
+- ex) 기본 컨테이너: 웹 서버 / 사이드카 컨테이너: 로그 수집
+- 재 사용성이 높아짐(다른 기본 컨테이너로 변경 가능)
+![Multi-Container Design Patterns_img.png](Multi-Container Design Patterns_img.png)
+- nginx의 access.log, error.log를 스트리밍하는 사이드카 컨테이너 예시
+
+NoneBashCSSCC#GoHTMLObjective-CJavaJavaScriptJSONPerlPHPPowershellPythonRubyRustSQLTypeScriptYAMLCopy
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-sidecar
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    ports:
+    - containerPort: 80
+    volumeMounts:
+    - name: logs
+      mountPath: /var/log/nginx
+  - name: sidecar-access
+    image: busybox
+    args: [/bin/sh, -c, 'tail -n+1 -f /var/log/nginx/access.log']
+    volumeMounts:
+    - name: logs
+      mountPath: /var/log/nginx
+  - name: sidecar-error
+    image: busybox
+    args: [/bin/sh, -c, 'tail -n+1 -f /var/log/nginx/error.log']
+    volumeMounts:
+    - name: logs
+      mountPath: /var/log/nginx
+  volumes:
+  - name: logs
+    emptyDir: {}
+```
+
+### #Ambassador 패턴
+
+---
+
+- 파드내에 프록시 역할을 하는 컨테이너를 추가하는 패턴
+- 파드에서 외부로 접근할때, 프록시에서 연결하도록 함
+- 기본 컨테이너 -> locathost -> 프록시 컨테이너 -> 외부
+- 트랙픽을 보다 세밀하게 제어 가능
+- ex) service mesh용 오픈소스 istio
+- ![Multi-Container Design Patterns_img_1.png](Multi-Container Design Patterns_img_1.png)
+- `6380` 포트를 이용하여 `redis` 컨테이너와 `REDIS_SERVERS`로 명명된 네트워크 위치 간의 연결을 하는 프록시 역할 역할
+
+NoneBashCSSCC#GoHTMLObjective-CJavaJavaScriptJSONPerlPHPPowershellPythonRubyRustSQLTypeScriptYAMLCopy
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ambassador-example
+spec:
+  containers:
+  - name: redis-client
+    image: redis
+  - name: ambassador
+    image: malexer/twemproxy
+    env:
+    - name: REDIS_SERVERS
+      value: redis-st-0.redis-svc.default.svc.cluster.local:6379:1 redis-st-1.redis-svc.default.svc.cluster.local:6379:1
+    ports:
+    - containerPort: 6380
+```
+
+### #Adapter 패턴
+
+---
+
+- 파드 외부로 노출되는 정보를 표준화하는 역할
+- 비슷한 역할을 하는 프로그램인 경우에도 출력물의 규격이 다른 경우가 있음
+- ex) 모니터링 지표를 표준화된 형식으로 모니터링 시스템에 보냄
+- ![Multi-Container Design Patterns_img_2.png](Multi-Container Design Patterns_img_2.png)
+- 특정 코드를 통해 메인 컨테이너의 로그를 JSON 형태로 변환하는 내용
+
+NoneBashCSSCC#GoHTMLObjective-CJavaJavaScriptJSONPerlPHPPowershellPythonRubyRustSQLTypeScriptYAMLCopy
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: adapter-container-demo
+spec:
+  containers:
+  - image: busybox
+    command: ["/bin/sh"]
+    args: ["-c", "while true; do echo $(date -u)'#This is log' >> /var/log/file.log; sleep 5;done"]
+    name: main-container
+    resources: {}
+    volumeMounts:
+    - name: var-logs
+      mountPath: /var/log
+  - image: bbachin1/adapter-node-server
+    name: adapter-container
+    imagePullPolicy: Always
+    resources: {}
+    ports:
+      - containerPort: 3080
+    volumeMounts:
+    - name: var-logs
+      mountPath: /var/log
+  dnsPolicy: Default
+  volumes:
+  - name: var-logs
+    emptyDir: {}
+```
+
+[https://matthewpalmer.net/kubernetes-app-developer/articles/multi-container-pod-design-patterns.html](https://matthewpalmer.net/kubernetes-app-developer/articles/multi-container-pod-design-patterns.html)
+
+[https://seongjin.me/kubernetes-multi-container-pod-design-patterns/](https://seongjin.me/kubernetes-multi-container-pod-design-patterns/)
